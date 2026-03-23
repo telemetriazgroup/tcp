@@ -5,7 +5,7 @@ import time
 import os
 
 HOST = '0.0.0.0'
-PORT = 9991
+PORT = 9990
 COMANDO_ARCHIVO = "comando_test.txt"
 REGISTRO_ENVIADOS = "comando_enviado"
 
@@ -26,7 +26,7 @@ def guardar_comando_enviado(texto, ip_dispositivo, timestamp):
 def procesar_comandos_cada_5_segundos():
     """Cada 5 segundos lee comando_test.txt, envía primera línea (200 chars) a dispositivos y la elimina."""
     while True:
-        time.sleep(5)
+        time.sleep(1)
 
         if not os.path.exists(COMANDO_ARCHIVO):
             continue
@@ -153,8 +153,8 @@ def handle_client(conn, addr):
     thread_recv.start()
 
     # Hilo para enviar la hora siempre
-    thread_time = threading.Thread(target=enviar_hora_periodicamente, args=(conn, addr), daemon=True)
-    thread_time.start()
+    # thread_time = threading.Thread(target=enviar_hora_periodicamente, args=(conn, addr), daemon=True)
+    #thread_time.start()
 
 def start_server():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
