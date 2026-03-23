@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Comandos TCP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f1419;
+            --surface: #1a2332;
+            --surface-hover: #243044;
+            --accent: #00d4aa;
+            --accent-dim: #00a884;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --border: #30363d;
+            --warning: #d29922;
+            --danger: #f85149;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+            padding: 1.5rem;
+        }
+
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        h1::before {
+            content: '';
+            width: 4px;
+            height: 1.2em;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .card h2 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 0 0 0.75rem 0;
+            color: var(--text-muted);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 140px;
+            padding: 0.75rem 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.15);
+        }
+
+        .form-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 0.6rem 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        input[type="text"]::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.08s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-dim);
+        }
+
+        .btn-secondary {
+            background: var(--surface-hover);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .flash {
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .flash.success {
+            background: rgba(0, 212, 170, 0.15);
+            border: 1px solid rgba(0, 212, 170, 0.3);
+            color: var(--accent);
+        }
+
+        .flash.warning {
+            background: rgba(210, 153, 34, 0.15);
+            border: 1px solid rgba(210, 153, 34, 0.3);
+            color: var(--warning);
+        }
+
+        .log {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .log-line {
+            padding: 0.15rem 0;
+            color: var(--text-muted);
+        }
+
+        .log-empty {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .hint {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Panel de Comandos TCP</h1>
+        <p class="subtitle">Edita la cola de comandos o añade uno nuevo. El servidor procesa cada 5 segundos.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, msg in messages %}
+                    <div class="flash {{ category or 'success' }}">{{ msg }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <h2>Cola de comandos (comando_test.txt)</h2>
+            <form action="{{ url_for('guardar') }}" method="post">
+                <textarea name="comandos" placeholder="Un comando por línea (máx. 200 caracteres por línea)...">{{ comandos }}</textarea>
+                <div class="form-row">
+                    <button type="submit" class="btn btn-primary">Guardar archivo</button>
+                </div>
+            </form>
+            <p class="hint">Cada línea se envía por orden. La primera se procesa cada 5 segundos y luego se elimina.</p>
+        </div>
+
+        <div class="card">
+            <h2>Añadir comando rápido</h2>
+            <form action="{{ url_for('agregar') }}" method="post">
+                <div class="form-row">
+                    <input type="text" name="comando" placeholder="Ej: ENVIAR_ALERTA o COMANDO_PERSONALIZADO" maxlength="200" autocomplete="off">
+                    <button type="submit" class="btn btn-primary">Añadir a la cola</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Últimos comandos enviados</h2>
+            <div class="log">
+                {% if enviados %}
+                    {% for linea in enviados %}
+                        <div class="log-line">{{ linea.rstrip() }}</div>
+                    {% endfor %}
+                {% else %}
+                    <div class="log-empty">Aún no hay comandos enviados.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

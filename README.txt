@@ -1,3 +1,21 @@
+INTERFAZ WEB (recomendado)
+==========================
+Para gestionar comandos sin usar la terminal:
+
+1. Instalar dependencias:
+   pip install -r requirements.txt
+
+2. Iniciar la interfaz web:
+   python web_app.py
+
+3. Abrir en el navegador: http://localhost:5000
+
+4. Desde la web puedes:
+   - Ver y editar la cola de comandos (comando_test.txt)
+   - Añadir comandos rápidos con un solo clic
+   - Ver los últimos comandos enviados a dispositivos
+
+
 COMANDOS UBUNTU PARA ESCRIBIR EN ARCHIVOS
 =========================================
 
