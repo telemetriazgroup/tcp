@@ -141,6 +141,41 @@
 
         .btn-primary:hover { background: var(--accent-dim); }
 
+        .btn-danger {
+            background: rgba(248, 81, 73, 0.25);
+            color: #ff8b87;
+            border: 1px solid rgba(248, 81, 73, 0.45);
+        }
+
+        .btn-danger:hover { background: rgba(248, 81, 73, 0.4); }
+
+        .tcp-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            padding: 0.65rem 0.9rem;
+            border-radius: 6px;
+            margin-bottom: 0.75rem;
+            border: 1px solid var(--border);
+        }
+
+        .tcp-status.on {
+            background: rgba(0, 212, 170, 0.1);
+            border-color: rgba(0, 212, 170, 0.35);
+            color: var(--accent);
+        }
+
+        .tcp-status.off {
+            background: var(--bg);
+            color: var(--text-muted);
+        }
+
+        .tcp-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
         .flash {
             padding: 0.75rem 1rem;
             border-radius: 6px;
@@ -275,6 +310,37 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
+
+        <div class="card">
+            <h2>Servidor TCP (puertos {{ puerto_a }} / {{ puerto_b }})</h2>
+            {% if estado_tcp.activo %}
+                <div class="tcp-status on">
+                    Activo en puerto <strong>{{ estado_tcp.puerto }}</strong>
+                    {% if estado_tcp.pid %} · PID {{ estado_tcp.pid }}{% endif %}
+                    {% if not estado_tcp.web %} · <span style="color:var(--warning)">no iniciado desde esta web</span>{% endif %}
+                </div>
+            {% else %}
+                <div class="tcp-status off">Detenido · ningún proceso escuchando en {{ puerto_a }}/{{ puerto_b }} (según estado guardado).</div>
+            {% endif %}
+            <p class="hint">
+                Al cambiar de puerto se detiene el proceso actual, se intenta liberar ambos puertos (<code>fuser</code>, <code>lsof</code> + <code>kill</code>) y se arranca el otro.
+                <strong>TCP no migra sola:</strong> cada equipo debe reconectar al puerto activo ({{ puerto_a }} o {{ puerto_b }}). Comprueba en el registro de conexiones nuevas entradas <code>CONECTADO</code> tras el cambio.
+            </p>
+            <div class="tcp-actions">
+                <form action="{{ url_for('tcp_control') }}" method="post">
+                    <input type="hidden" name="accion" value="puerto_{{ puerto_a }}">
+                    <button type="submit" class="btn btn-primary">Activar {{ puerto_a }} (apaga {{ puerto_b }})</button>
+                </form>
+                <form action="{{ url_for('tcp_control') }}" method="post">
+                    <input type="hidden" name="accion" value="puerto_{{ puerto_b }}">
+                    <button type="submit" class="btn btn-primary">Activar {{ puerto_b }} (apaga {{ puerto_a }})</button>
+                </form>
+                <form action="{{ url_for('tcp_control') }}" method="post">
+                    <input type="hidden" name="accion" value="detener">
+                    <button type="submit" class="btn btn-danger">Detener servidor TCP</button>
+                </form>
+            </div>
+        </div>
 
         <div class="card">
             <h2>Cola de comandos (comando_test.txt)</h2>

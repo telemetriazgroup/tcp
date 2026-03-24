@@ -16,6 +16,18 @@ Para gestionar comandos sin usar la terminal:
    - Ver los últimos comandos enviados (general, a todos)
    - Ver registro de conexiones (dispositivos_conexiones.txt)
    - Ver chat por dispositivo (archivos en chats/IP_en_guiones_puerto.txt)
+   - Arrancar o detener el servidor TCP y alternar entre puerto 9990 y 9991
+
+Control del servidor TCP desde la web:
+   - "Activar 9990" o "Activar 9991": detiene el proceso actual, libera ambos puertos
+     (fuser -k, lsof + kill -9) y arranca tcp_test.py en el puerto elegido.
+   - "Detener servidor TCP": termina el proceso y vuelve a intentar liberar 9990/9991.
+   - Los clientes no cambian de puerto solos: deben reconectar al puerto activo.
+     Tras el cambio, revisa dispositivos_conexiones.txt (nuevas líneas CONECTADO).
+
+Arranque manual por terminal (opcional):
+   python tcp_test.py --port 9990
+   python tcp_test.py --port 9991
 
 El servidor TCP (tcp_test.py) escribe:
    - dispositivos_conexiones.txt: CONECTADO / DESCONECTADO con fecha
