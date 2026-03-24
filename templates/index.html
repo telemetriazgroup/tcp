@@ -19,11 +19,10 @@
             --border: #30363d;
             --warning: #d29922;
             --danger: #f85149;
+            --bubble-dev: #2d3a4d;
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             font-family: 'Outfit', sans-serif;
@@ -35,7 +34,7 @@
         }
 
         .container {
-            max-width: 720px;
+            max-width: 920px;
             margin: 0 auto;
         }
 
@@ -133,27 +132,14 @@
             transition: background 0.15s, transform 0.08s;
         }
 
-        .btn:active {
-            transform: scale(0.98);
-        }
+        .btn:active { transform: scale(0.98); }
 
         .btn-primary {
             background: var(--accent);
             color: var(--bg);
         }
 
-        .btn-primary:hover {
-            background: var(--accent-dim);
-        }
-
-        .btn-secondary {
-            background: var(--surface-hover);
-            color: var(--text);
-        }
-
-        .btn-secondary:hover {
-            background: var(--border);
-        }
+        .btn-primary:hover { background: var(--accent-dim); }
 
         .flash {
             padding: 0.75rem 1rem;
@@ -200,12 +186,87 @@
             color: var(--text-muted);
             margin-top: 0.5rem;
         }
+
+        /* Chat por dispositivo */
+        .device-chat {
+            margin-bottom: 1.25rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--bg);
+        }
+
+        .device-chat:last-child { margin-bottom: 0; }
+
+        .device-chat-header {
+            padding: 0.65rem 1rem;
+            background: var(--surface-hover);
+            border-bottom: 1px solid var(--border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .device-chat-header span {
+            color: var(--text-muted);
+            font-weight: 400;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+
+        .chat-messages {
+            padding: 0.75rem;
+            max-height: 320px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .bubble {
+            max-width: 88%;
+            padding: 0.55rem 0.85rem;
+            border-radius: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            line-height: 1.45;
+        }
+
+        .bubble .bubble-meta {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .bubble.dispositivo {
+            align-self: flex-start;
+            background: var(--bubble-dev);
+            border: 1px solid var(--border);
+        }
+
+        .bubble.servidor {
+            align-self: flex-end;
+            background: rgba(0, 212, 170, 0.12);
+            border: 1px solid rgba(0, 212, 170, 0.35);
+        }
+
+        .bubble .bubble-text { word-break: break-word; color: var(--text); }
+
+        .section-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Panel de Comandos TCP</h1>
-        <p class="subtitle">Edita la cola de comandos o añade uno nuevo. El servidor procesa cada 5 segundos.</p>
+        <p class="subtitle">Cola de comandos (broadcast), registro global y chat por IP:puerto. Archivos en <code style="color:var(--accent)">chats/</code> y <code style="color:var(--accent)">dispositivos_conexiones.txt</code>.</p>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -223,21 +284,21 @@
                     <button type="submit" class="btn btn-primary">Guardar archivo</button>
                 </div>
             </form>
-            <p class="hint">Cada línea se envía por orden. La primera se procesa cada 5 segundos y luego se elimina.</p>
+            <p class="hint">La primera línea se procesa periódicamente y se elimina; se envía a todos los dispositivos conectados.</p>
         </div>
 
         <div class="card">
             <h2>Añadir comando rápido</h2>
             <form action="{{ url_for('agregar') }}" method="post">
                 <div class="form-row">
-                    <input type="text" name="comando" placeholder="Ej: ENVIAR_ALERTA o COMANDO_PERSONALIZADO" maxlength="200" autocomplete="off">
+                    <input type="text" name="comando" placeholder="Ej: ENVIAR_ALERTA" maxlength="200" autocomplete="off">
                     <button type="submit" class="btn btn-primary">Añadir a la cola</button>
                 </div>
             </form>
         </div>
 
         <div class="card">
-            <h2>Últimos comandos enviados</h2>
+            <h2>Últimos comandos enviados (general)</h2>
             <div class="log">
                 {% if enviados %}
                     {% for linea in enviados %}
@@ -247,6 +308,51 @@
                     <div class="log-empty">Aún no hay comandos enviados.</div>
                 {% endif %}
             </div>
+        </div>
+
+        <div class="card">
+            <h2>Registro de conexiones (dispositivos_conexiones.txt)</h2>
+            <p class="section-label">CONECTADO / DESCONECTADO por IP y puerto</p>
+            <div class="log">
+                {% if conexiones %}
+                    {% for linea in conexiones %}
+                        <div class="log-line">{{ linea }}</div>
+                    {% endfor %}
+                {% else %}
+                    <div class="log-empty">Sin eventos de conexión aún (ejecuta el servidor TCP y conecta un cliente).</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Chat por dispositivo</h2>
+            <p class="hint">Cada archivo <code>chats/IP_con_guiones_puerto.txt</code>: respuestas del dispositivo a la izquierda; lo enviado por el servidor a ese socket a la derecha.</p>
+            {% if dispositivos %}
+                {% for dev in dispositivos %}
+                    <div class="device-chat">
+                        <div class="device-chat-header">
+                            {{ dev.ip }}:{{ dev.port }}
+                            <span>archivo: {{ dev.id }}.txt</span>
+                        </div>
+                        <div class="chat-messages">
+                            {% if dev.mensajes %}
+                                {% for m in dev.mensajes %}
+                                    <div class="bubble {{ m.rol }}">
+                                        <div class="bubble-meta">
+                                            {% if m.fecha %}{{ m.fecha }} · {% endif %}{% if m.rol == 'servidor' %}Servidor{% else %}Dispositivo{% endif %}
+                                        </div>
+                                        <div class="bubble-text">{{ m.texto }}</div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="log-empty">Sin mensajes aún (conexión registrada, esperando datos).</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="log-empty">No hay dispositivos en chats/. Conéctate al servidor TCP para crear el archivo de chat.</div>
+            {% endif %}
         </div>
     </div>
 </body>

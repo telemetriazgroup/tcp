@@ -13,7 +13,13 @@ Para gestionar comandos sin usar la terminal:
 4. Desde la web puedes:
    - Ver y editar la cola de comandos (comando_test.txt)
    - Añadir comandos rápidos con un solo clic
-   - Ver los últimos comandos enviados a dispositivos
+   - Ver los últimos comandos enviados (general, a todos)
+   - Ver registro de conexiones (dispositivos_conexiones.txt)
+   - Ver chat por dispositivo (archivos en chats/IP_en_guiones_puerto.txt)
+
+El servidor TCP (tcp_test.py) escribe:
+   - dispositivos_conexiones.txt: CONECTADO / DESCONECTADO con fecha
+   - chats/192_168_1_5_50234.txt (ejemplo): líneas [fecha] dispositivo> o servidor>
 
 
 COMANDOS UBUNTU PARA ESCRIBIR EN ARCHIVOS

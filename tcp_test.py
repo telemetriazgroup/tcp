@@ -6,19 +6,55 @@ import os
 
 HOST = '0.0.0.0'
 PORT = 9990
-COMANDO_ARCHIVO = "comando_test.txt"
-REGISTRO_ENVIADOS = "comando_enviado"
+
+DIR_BASE = os.path.dirname(os.path.abspath(__file__))
+COMANDO_ARCHIVO = os.path.join(DIR_BASE, "comando_test.txt")
+REGISTRO_ENVIADOS = os.path.join(DIR_BASE, "comando_enviado")
+CHAT_DIR = os.path.join(DIR_BASE, "chats")
+CONEXIONES_LOG = os.path.join(DIR_BASE, "dispositivos_conexiones.txt")
 
 # Lista de conexiones activas (conn, addr) para broadcast
 conexiones_activas = []
 lock_conexiones = threading.Lock()
+lock_archivos_chat = threading.Lock()
 
-def guardar_comando_enviado(texto, ip_dispositivo, timestamp):
-    """Guarda en archivo: texto enviado, hora e IP del dispositivo."""
+
+def ruta_chat_dispositivo(ip: str, port: int) -> str:
+    """Archivo de chat por dispositivo: chats/IP_con_puntos_sustituidos_por_guiones_puerto.txt"""
+    ip_safe = ip.replace(".", "_")
+    os.makedirs(CHAT_DIR, exist_ok=True)
+    return os.path.join(CHAT_DIR, f"{ip_safe}_{port}.txt")
+
+
+def registrar_conexion_evento(ip: str, port: int, evento: str):
+    """Guarda en dispositivos_conexiones.txt: CONECTADO / DESCONECTADO."""
+    ts = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    linea = f"[{ts}] {evento} {ip}:{port}\n"
+    with lock_archivos_chat:
+        with open(CONEXIONES_LOG, "a", encoding="utf-8") as f:
+            f.write(linea)
+
+
+def guardar_linea_chat(ip: str, port: int, origen: str, texto: str):
+    """
+    origen: 'dispositivo' (respuesta del cliente) o 'servidor' (comando u hora enviada).
+    Formato legible para la interfaz tipo chat.
+    """
+    ts = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    # Una sola línea por mensaje (sanitizar saltos)
+    texto_limpio = texto.replace("\r", " ").replace("\n", " ").strip()
+    linea = f"[{ts}] {origen}> {texto_limpio}\n"
+    ruta = ruta_chat_dispositivo(ip, port)
+    with lock_archivos_chat:
+        with open(ruta, "a", encoding="utf-8") as f:
+            f.write(linea)
+
+def guardar_comando_enviado(texto, ip_dispositivo, puerto, timestamp):
+    """Guarda en archivo global: texto enviado, hora, IP y puerto."""
     fecha_actual = timestamp.strftime("%d_%m_%Y")
-    nombre_archivo = f"{REGISTRO_ENVIADOS}_{fecha_actual}.txt"
+    nombre_archivo = os.path.join(DIR_BASE, f"{os.path.basename(REGISTRO_ENVIADOS)}_{fecha_actual}.txt")
     hora = timestamp.strftime("%H:%M:%S")
-    linea = f"[{hora}] IP: {ip_dispositivo} | Texto: {texto}\n"
+    linea = f"[{hora}] IP: {ip_dispositivo}:{puerto} | Texto: {texto}\n"
 
     with open(nombre_archivo, "a", encoding="utf-8") as archivo:
         archivo.write(linea)
@@ -63,11 +99,12 @@ def procesar_comandos_cada_5_segundos():
         desconectados = []
 
         for conn, addr in conexiones:
-            client_ip = addr[0]
+            client_ip, client_port = addr[0], addr[1]
             try:
                 conn.sendall(texto_a_enviar.encode('utf-8'))
-                guardar_comando_enviado(texto_a_enviar, client_ip, timestamp)
-                print(f"📤 [COMANDO ENVIADO a {client_ip}] {texto_a_enviar[:50]}...")
+                guardar_comando_enviado(texto_a_enviar, client_ip, client_port, timestamp)
+                guardar_linea_chat(client_ip, client_port, "servidor", texto_a_enviar)
+                print(f"📤 [COMANDO ENVIADO a {client_ip}:{client_port}] {texto_a_enviar[:50]}...")
             except (BrokenPipeError, ConnectionResetError, OSError):
                 desconectados.append((conn, addr))
 
@@ -78,7 +115,7 @@ def procesar_comandos_cada_5_segundos():
 
 def guardar_en_archivo(mensaje, timestamp):
     fecha_actual = timestamp.strftime("%d_%m_%Y")
-    nombre_archivo = f"1_tcp_datos_{fecha_actual}.txt"
+    nombre_archivo = os.path.join(DIR_BASE, f"1_tcp_datos_{fecha_actual}.txt")
     hora = timestamp.strftime("%H:%M:%S")
     linea = f"[{hora}] {mensaje}\n"
 
@@ -132,6 +169,7 @@ def recibir_datos(conn, addr):
 
             print(f"📩 [DATA] {client_ip}:{client_port}: {message}")
             guardar_en_archivo(message, timestamp)
+            guardar_linea_chat(client_ip, client_port, "dispositivo", message)
 
             ack = f"RECIBIDO ({len(message)} bytes)"
             conn.sendall(ack.encode('utf-8'))
@@ -139,11 +177,18 @@ def recibir_datos(conn, addr):
     except Exception:
         print(f"⚠️ Error con el cliente {client_ip}:{client_port}")
     finally:
+        registrar_conexion_evento(client_ip, client_port, "DESCONECTADO")
         remover_conexion(conn, addr)
         conn.close()
 
 def handle_client(conn, addr):
-    print(f"✅ Nueva conexión: {addr[0]}:{addr[1]}")
+    ip, puerto = addr[0], addr[1]
+    print(f"✅ Nueva conexión: {ip}:{puerto}")
+    registrar_conexion_evento(ip, puerto, "CONECTADO")
+    ruta = ruta_chat_dispositivo(ip, puerto)
+    with lock_archivos_chat:
+        if not os.path.exists(ruta):
+            open(ruta, "a", encoding="utf-8").close()
 
     with lock_conexiones:
         conexiones_activas.append((conn, addr))
@@ -170,10 +215,12 @@ def start_server():
         print(f"👥 Clientes activos: {threading.active_count() - 1}")
 
 if __name__ == "__main__":
+    os.makedirs(CHAT_DIR, exist_ok=True)
     thread_comandos = threading.Thread(
         target=procesar_comandos_cada_5_segundos,
         daemon=True
     )
     thread_comandos.start()
-    print(f"📋 Procesador de comandos iniciado (cada 5 s, archivo: {COMANDO_ARCHIVO})")
+    print(f"📋 Procesador de comandos (archivo: {COMANDO_ARCHIVO})")
+    print(f"💬 Chats por dispositivo en: {CHAT_DIR}")
     start_server()
